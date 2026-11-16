@@ -247,8 +247,16 @@ class BoardSettings extends PluginSettingTab {
   this.containerEl.empty();
   new Setting(this.containerEl).setName('Колонок в ряду').setDesc('От 1 до 6. Остальные колонки переносятся на следующую строку.').addDropdown(drop => { for (let i=1;i<=6;i++) drop.addOption(String(i), String(i)); drop.setValue(String(this.plugin.options.width)).onChange(async value => { this.plugin.options.width = Number(value); await this.plugin.save(); }); });
   this.containerEl.createEl('p', { text: 'Каждая колонка показывает Markdown-заметки непосредственно из выбранной папки. Например: Проект → Работа/Проект/Задачи. Папка должна уже существовать.' });
+  const moveColumn = async (index: number, offset: number) => {
+   const columns = this.plugin.options.columns;
+   const target = index + offset;
+   if (target < 0 || target >= columns.length) return;
+   [columns[index], columns[target]] = [columns[target], columns[index]];
+   await this.plugin.save();
+   this.display();
+  };
   this.plugin.options.columns.forEach((column, index) => {
-   new Setting(this.containerEl).setName(`Колонка ${index+1}`).addText(text => text.setPlaceholder('Проект').setValue(column.title).onChange(async value => { column.title = value; await this.plugin.save(); })).addText(text => text.setPlaceholder('Работа/Проект/Задачи').setValue(column.folder).onChange(async value => { column.folder = value.trim() ? normalizePath(value.trim()) : ''; await this.plugin.save(); })).addColorPicker(picker => picker.setValue(columnColor(column)).onChange(async value => { column.color = value; await this.plugin.save(); })).addExtraButton(button => button.setIcon('trash').setTooltip('Удалить колонку').onClick(async () => { this.plugin.options.columns.splice(index,1); await this.plugin.save(); this.display(); }));
+   new Setting(this.containerEl).setName(`Колонка ${index+1}`).addText(text => text.setPlaceholder('Проект').setValue(column.title).onChange(async value => { column.title = value; await this.plugin.save(); })).addText(text => text.setPlaceholder('Работа/Проект/Задачи').setValue(column.folder).onChange(async value => { column.folder = value.trim() ? normalizePath(value.trim()) : ''; await this.plugin.save(); })).addColorPicker(picker => picker.setValue(columnColor(column)).onChange(async value => { column.color = value; await this.plugin.save(); })).addExtraButton(button => button.setIcon('arrow-up').setTooltip('Переместить раньше').setDisabled(index === 0).onClick(() => moveColumn(index, -1))).addExtraButton(button => button.setIcon('arrow-down').setTooltip('Переместить позже').setDisabled(index === this.plugin.options.columns.length - 1).onClick(() => moveColumn(index, 1))).addExtraButton(button => button.setIcon('trash').setTooltip('Удалить колонку').onClick(async () => { this.plugin.options.columns.splice(index,1); await this.plugin.save(); this.display(); }));
   });
   new Setting(this.containerEl).addButton(button => button.setButtonText('Добавить колонку').onClick(async () => { this.plugin.options.columns.push({ title: '', folder: '', color: COLUMN_COLOR }); await this.plugin.save(); this.display(); }));
  }
